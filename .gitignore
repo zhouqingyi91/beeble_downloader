@@ -1,9 +1,6 @@
 chrome-profile/
 node_modules/
-images/output/*
-!images/output/.gitkeep
-images/rendered/*
-!images/rendered/.gitkeep
+images/
 logs/*
 !logs/.gitkeep
 __pycache__/
