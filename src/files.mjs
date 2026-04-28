@@ -9,6 +9,7 @@ export function projectPaths(root = process.cwd()) {
     inputDir: path.join(root, 'images', 'input'),
     outputDir: path.join(root, 'images', 'output'),
     renderedDir: path.join(root, 'images', 'rendered'),
+    uploadedDir: path.join(root, 'images', 'uploaded'),
     profileDir: path.join(root, 'chrome-profile'),
     traceExtensionDir: path.join(root, 'imageassistant_extraction_trace', 'source'),
     logDir: path.join(root, 'logs')
@@ -20,6 +21,7 @@ export async function ensureRuntimeDirs(paths) {
     mkdir(paths.inputDir, { recursive: true }),
     mkdir(paths.outputDir, { recursive: true }),
     mkdir(paths.renderedDir, { recursive: true }),
+    mkdir(paths.uploadedDir, { recursive: true }),
     mkdir(paths.logDir, { recursive: true })
   ]);
 }
@@ -64,6 +66,19 @@ export async function moveToRendered(inputImagePath, renderedDir) {
     index += 1;
   }
   await rename(inputImagePath, destination);
+  return destination;
+}
+
+export async function moveDirectoryToUploaded(sourceDir, uploadedDir) {
+  await mkdir(uploadedDir, { recursive: true });
+  const parsed = path.parse(sourceDir);
+  let destination = path.join(uploadedDir, parsed.base);
+  let index = 1;
+  while (await exists(destination)) {
+    destination = path.join(uploadedDir, `${parsed.name}-${index}`);
+    index += 1;
+  }
+  await rename(sourceDir, destination);
   return destination;
 }
 
