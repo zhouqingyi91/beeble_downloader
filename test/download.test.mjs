@@ -1,6 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { buildBaselineSet, filterCandidateItems, normalizeImageUrl, passNameForItem } from '../src/download.mjs';
+import { mkdtemp, mkdir, writeFile } from 'node:fs/promises';
+import os from 'node:os';
+import path from 'node:path';
+import { buildBaselineSet, filterCandidateItems, missingRequiredPasses, normalizeImageUrl, passNameForItem } from '../src/download.mjs';
 
 test('normalizeImageUrl removes hash only for regular urls', () => {
   assert.equal(normalizeImageUrl('https://example.com/a.jpg#x'), 'https://example.com/a.jpg');
@@ -31,4 +34,45 @@ test('passNameForItem detects only supported VFX pass names', () => {
   assert.equal(passNameForItem({ filename: '06-Roughness_000001' }), 'Roughness');
   assert.equal(passNameForItem({ filename: 'BaseColor_000001' }), 'BaseColor');
   assert.equal(passNameForItem({ filename: 'image' }), null);
+});
+
+test('missingRequiredPasses passes when all required passes have non-empty images', async () => {
+  const dir = await mkdtemp(path.join(os.tmpdir(), 'beeble-passes-'));
+  for (const passName of ['Alpha', 'BaseColor', 'Depth', 'Normal', 'Roughness', 'Specular']) {
+    await mkdir(path.join(dir, passName));
+    await writeFile(path.join(dir, passName, `${passName}.png`), 'image');
+  }
+
+  assert.deepEqual(await missingRequiredPasses(dir), []);
+});
+
+test('missingRequiredPasses reports missing required passes', async () => {
+  const dir = await mkdtemp(path.join(os.tmpdir(), 'beeble-passes-'));
+  for (const passName of ['Alpha', 'BaseColor', 'Depth', 'Normal', 'Roughness']) {
+    await mkdir(path.join(dir, passName));
+    await writeFile(path.join(dir, passName, `${passName}.png`), 'image');
+  }
+
+  assert.deepEqual(await missingRequiredPasses(dir), ['Specular']);
+});
+
+test('missingRequiredPasses ignores empty files and non-image files', async () => {
+  const dir = await mkdtemp(path.join(os.tmpdir(), 'beeble-passes-'));
+  for (const passName of ['Alpha', 'BaseColor', 'Depth', 'Normal', 'Roughness', 'Specular']) {
+    await mkdir(path.join(dir, passName));
+    await writeFile(path.join(dir, passName, `${passName}.png`), passName === 'Depth' ? '' : 'image');
+  }
+  await writeFile(path.join(dir, 'Depth', 'Depth.txt'), 'not-image');
+
+  assert.deepEqual(await missingRequiredPasses(dir), ['Depth']);
+});
+
+test('missingRequiredPasses ignores Metallic for required pass coverage', async () => {
+  const dir = await mkdtemp(path.join(os.tmpdir(), 'beeble-passes-'));
+  for (const passName of ['Alpha', 'BaseColor', 'Depth', 'Metallic', 'Normal', 'Roughness']) {
+    await mkdir(path.join(dir, passName));
+    await writeFile(path.join(dir, passName, `${passName}.png`), 'image');
+  }
+
+  assert.deepEqual(await missingRequiredPasses(dir), ['Specular']);
 });

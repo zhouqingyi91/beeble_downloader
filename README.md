@@ -52,7 +52,9 @@ You can also set `LIGHTING_LAB_BASE_URL` instead of passing `--base-url`.
 
 - The script never clicks `Generate`.
 - It only moves an input image to `images/rendered/` after at least one non-empty image is downloaded.
+- If any required pass is missing, the output directory is moved to `images/missing/`.
 - The upload script only moves an output directory to `images/uploaded/` after its import job returns `completed`.
 - Only `Specular`, `Depth`, `Alpha`, `Roughness`, `Metallic`, `Normal`, and `BaseColor` pass images are downloaded.
+- Required passes are `Alpha`, `BaseColor`, `Depth`, `Normal`, `Roughness`, and `Specular`; `Metallic` is optional.
 - Pass images are saved under `images/output/<input-name>/<Pass>/<Pass>_<input-name>.<ext>`.
 - The source image is copied as `images/output/<input-name>/Source/Source_<input-name><source-ext>`.

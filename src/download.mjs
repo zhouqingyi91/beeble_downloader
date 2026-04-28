@@ -1,10 +1,12 @@
-import { copyFile, mkdir, readFile, writeFile } from 'node:fs/promises';
+import { copyFile, mkdir, readFile, readdir, stat, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { createHash } from 'node:crypto';
 import { assertNonEmptyFile, safeSegment } from './files.mjs';
 
 const MIN_AREA = 128 * 128;
 const UI_RE = /(favicon|logo|icon|avatar|spinner|loading|empty|overlay|thumb|placeholder|sprite)/i;
+const IMAGE_EXTENSIONS = new Set(['.jpg', '.jpeg', '.png', '.webp', '.bmp', '.gif', '.tif', '.tiff']);
+export const REQUIRED_PASS_NAMES = ['Alpha', 'BaseColor', 'Depth', 'Normal', 'Roughness', 'Specular'];
 export const PASS_NAMES = ['Specular', 'Depth', 'Alpha', 'Roughness', 'Metallic', 'Normal', 'BaseColor'];
 const PASS_RE = new RegExp(`(?:^|[^a-z])(${PASS_NAMES.join('|')})(?:[^a-z]|$)`, 'i');
 
@@ -74,11 +76,38 @@ export async function copySourceImage(inputImagePath, outputDir) {
   return target;
 }
 
+export async function missingRequiredPasses(outputDir) {
+  const results = await Promise.all(
+    REQUIRED_PASS_NAMES.map(async (passName) => ({
+      passName,
+      exists: await hasNonEmptyImage(path.join(outputDir, passName))
+    }))
+  );
+  return results.filter((item) => !item.exists).map((item) => item.passName);
+}
+
 export function passNameForItem(item) {
   const haystack = [item.filename, item.src, item.href, item.title, item.alt].filter(Boolean).join(' ');
   const match = PASS_RE.exec(haystack);
   if (!match) return null;
   return PASS_NAMES.find((name) => name.toLowerCase() === match[1].toLowerCase()) || null;
+}
+
+async function hasNonEmptyImage(dir) {
+  let entries;
+  try {
+    entries = await readdir(dir, { withFileTypes: true });
+  } catch (error) {
+    if (error && error.code === 'ENOENT') return false;
+    throw error;
+  }
+
+  for (const entry of entries) {
+    if (!entry.isFile() || !IMAGE_EXTENSIONS.has(path.extname(entry.name).toLowerCase())) continue;
+    const info = await stat(path.join(dir, entry.name));
+    if (info.size > 0) return true;
+  }
+  return false;
 }
 
 function scoreCandidate(item) {

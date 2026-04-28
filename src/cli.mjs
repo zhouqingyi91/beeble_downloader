@@ -4,8 +4,8 @@ import { stdin as input, stdout as output } from 'node:process';
 import path from 'node:path';
 import { openBeebleHome, needsManualLogin, waitForHomeReady, processOneImage } from './beeble-flow.mjs';
 import { getExtensionServiceWorker, launchBrowser, resolveImageAssistantExtension } from './browser.mjs';
-import { buildBaselineSet, downloadCandidates, filterCandidateItems } from './download.mjs';
-import { ensureRuntimeDirs, listInputImages, moveToRendered, outputDirForImage, projectPaths } from './files.mjs';
+import { buildBaselineSet, downloadCandidates, filterCandidateItems, missingRequiredPasses } from './download.mjs';
+import { ensureRuntimeDirs, listInputImages, moveDirectoryToMissing, moveToRendered, outputDirForImage, projectPaths } from './files.mjs';
 import { closeExtractorPages, extractImagesFromPage } from './imageassistant.mjs';
 
 const args = parseArgs(process.argv.slice(2));
@@ -63,6 +63,11 @@ try {
         throw new Error('没有成功下载的候选图片');
       }
       downloaded.forEach((item) => console.log(`下载: ${item.filePath}`));
+      const missingPasses = await missingRequiredPasses(outDir);
+      if (missingPasses.length > 0) {
+        const missingPath = await moveDirectoryToMissing(outDir, paths.missingDir);
+        console.log(`缺少 pass: ${missingPasses.join(', ')}; 已移动输出目录: ${missingPath}`);
+      }
       const renderedPath = await moveToRendered(imagePath, paths.renderedDir);
       console.log(`完成并移动源图: ${renderedPath}`);
     } catch (error) {

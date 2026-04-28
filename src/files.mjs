@@ -8,6 +8,7 @@ export function projectPaths(root = process.cwd()) {
     root,
     inputDir: path.join(root, 'images', 'input'),
     outputDir: path.join(root, 'images', 'output'),
+    missingDir: path.join(root, 'images', 'missing'),
     renderedDir: path.join(root, 'images', 'rendered'),
     uploadedDir: path.join(root, 'images', 'uploaded'),
     profileDir: path.join(root, 'chrome-profile'),
@@ -20,6 +21,7 @@ export async function ensureRuntimeDirs(paths) {
   await Promise.all([
     mkdir(paths.inputDir, { recursive: true }),
     mkdir(paths.outputDir, { recursive: true }),
+    mkdir(paths.missingDir, { recursive: true }),
     mkdir(paths.renderedDir, { recursive: true }),
     mkdir(paths.uploadedDir, { recursive: true }),
     mkdir(paths.logDir, { recursive: true })
@@ -70,12 +72,20 @@ export async function moveToRendered(inputImagePath, renderedDir) {
 }
 
 export async function moveDirectoryToUploaded(sourceDir, uploadedDir) {
-  await mkdir(uploadedDir, { recursive: true });
+  return moveDirectoryTo(sourceDir, uploadedDir);
+}
+
+export async function moveDirectoryToMissing(sourceDir, missingDir) {
+  return moveDirectoryTo(sourceDir, missingDir);
+}
+
+async function moveDirectoryTo(sourceDir, targetDir) {
+  await mkdir(targetDir, { recursive: true });
   const parsed = path.parse(sourceDir);
-  let destination = path.join(uploadedDir, parsed.base);
+  let destination = path.join(targetDir, parsed.base);
   let index = 1;
   while (await exists(destination)) {
-    destination = path.join(uploadedDir, `${parsed.name}-${index}`);
+    destination = path.join(targetDir, `${parsed.name}-${index}`);
     index += 1;
   }
   await rename(sourceDir, destination);
