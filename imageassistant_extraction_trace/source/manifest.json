@@ -1,0 +1,51 @@
+{
+   "action": {
+      "default_popup": "popup.html"
+   },
+   "background": {
+      "service_worker": "scripts/background.js"
+   },
+   "commands": {
+      "command_extract_images": {
+         "description": "__MSG_manifest_extract_description__",
+         "suggested_key": {
+            "default": "Alt+Shift+Y"
+         }
+      },
+      "command_multi_extract_images": {
+         "description": "__MSG_manifest_multi_extract_description__",
+         "suggested_key": {
+            "default": "Alt+Shift+T"
+         }
+      }
+   },
+   "content_scripts": [ {
+      "all_frames": true,
+      "js": [ "scripts/inspector.js" ],
+      "matches": [ "\u003Call_urls>" ],
+      "run_at": "document_start"
+   } ],
+   "default_locale": "en",
+   "description": "__MSG_manifest_description__",
+   "host_permissions": [ "\u003Call_urls>" ],
+   "icons": {
+      "128": "images/icon128.png",
+      "512": "images/icon512.png",
+      "64": "images/icon.png"
+   },
+   "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAgp7k4rrV6KEozE3WnQjeBuXOc/nXJPQOs3Di9piFU54makeOvQs/rX7IvQ8TT2BErrTny4GBpBF3Hdx2jy7WDyM8UZ4IPu+IDl55SgNBMo8CI7ClqP7UjnVZSlINPGymQnvz1W4Rmmef73Gvwir4KtPG0LaUjxnhtDVs+40HTVknmHN1oj0eMStIegD2bK9Cj/QHDdBtXiX/W29noqQV5daGD8K9llZZ/jgOZ9Q6kWN6ThSxdb9RlveWsTFNOcpqoS45ea5fEXYk86G/KB8TlVw4dkRCW0MTeqdQGL8B0tTJwN43pywhsY3jJbPN9KN9Rb3YER+Y2ksf46at2sYCDwIDAQAB",
+   "manifest_version": 3,
+   "name": "__MSG_manifest_ext_name__",
+   "options_ui": {
+      "open_in_tab": true,
+      "page": "options.html"
+   },
+   "permissions": [ "tabs", "scripting", "webNavigation", "webRequest", "declarativeNetRequest", "declarativeNetRequestWithHostAccess", "storage", "downloads", "notifications", "contextMenus", "fontSettings" ],
+   "short_name": "__MSG_manifest_short_name__",
+   "update_url": "https://clients2.google.com/service/update2/crx",
+   "version": "1.70.7",
+   "web_accessible_resources": [ {
+      "matches": [ "\u003Call_urls>" ],
+      "resources": [ "libs/bootstrap/3.4.1/js/bootstrap.min.js", "libs/bootstrap/3.4.1/css/bootstrap.min.css", "libs/bootstrap/3.4.1/css/bootstrap-theme.min.css", "libs/bootstrap/3.4.1/css/bootstrap.css.map", "libs/bootstrap/3.4.1/css/bootstrap-theme.css.map", "libs/bootstrap/3.4.1/fonts/glyphicons-halflings-regular.eot", "libs/bootstrap/3.4.1/fonts/glyphicons-halflings-regular.svg", "libs/bootstrap/3.4.1/fonts/glyphicons-halflings-regular.ttf", "libs/bootstrap/3.4.1/fonts/glyphicons-halflings-regular.woff", "libs/bootstrap/3.4.1/fonts/glyphicons-halflings-regular.woff2", "libs/colorbox/1.6.4/colorbox.css", "libs/colorbox/1.6.4/images/overlay.png", "libs/colorbox/1.6.4/images/controls.png", "libs/colorbox/1.6.4/images/border.png", "libs/colorbox/1.6.4/images/loading_background.png", "libs/colorbox/1.6.4/images/loading.gif", "libs/colorbox/1.6.4/jquery.colorbox-min.js", "libs/colorbox/1.6.4/i18n/jquery.colorbox-zh-CN.js", "styles/style_forum.css", "images/icon.png", "images/overlay.png", "libs/jquery/3.4.1/jquery-3.4.1.min.js", "libs/jquery/3.4.1/jquery-3.4.1.min.map", "libs/qrcode/dist/qrcode.js", "libs/bootstrap-switch/3.3.4/bootstrap-switch.min.css", "libs/bootstrap-switch/3.3.4/bootstrap-switch.min.js", "scripts/function.js", "scripts/mime.js", "scripts/favorite.js", "scripts/scriptForThirdPartPage.js", "scripts/inspector.js" ]
+   } ]
+}
