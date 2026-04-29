@@ -7,13 +7,35 @@ Headed Playwright Chromium automation for Beeble VFX Pass image rendering.
 ```bash
 npm install
 npm run install-browsers
+npm run init
 npm run run -- --dry-run --limit 1
 npm run run -- --limit 1
 ```
 
-First run opens Chromium with the persistent profile in `./chrome-profile`.
-If login is required, complete Google/Beeble login manually in that window, then press Enter in the terminal.
-After Enter, the script waits up to 2 minutes for the Beeble home page to become usable.
+`init` opens Chromium with the persistent profile in `./chrome-profile` and loads ImageAssistant.
+If ImageAssistant is not found, `init` opens the Chrome Web Store install page and asks you to install it first.
+Complete Google login and Beeble login manually in that window; `init` does not detect login state.
+After login, manually close Chromium; only then `init` writes the initialization marker.
+After that, run the downloader.
+
+Use npm's `--` separator when passing downloader options:
+
+```bash
+npm run run -- --limit 1
+```
+
+On Windows 11, ImageAssistant is auto-detected from:
+
+```txt
+%LOCALAPPDATA%\Google\Chrome\User Data\Default\Extensions\dbjbempljhcmhlfpfacalomonjpalpko
+```
+
+If Chrome uses another profile/path, pass the unpacked extension version directory explicitly:
+
+```powershell
+$env:IMAGE_ASSISTANT_EXTENSION_PATH="C:\Users\<you>\AppData\Local\Google\Chrome\User Data\Default\Extensions\dbjbempljhcmhlfpfacalomonjpalpko\1.70.7_0"
+npm run init
+```
 
 Optional timeout override:
 
@@ -56,5 +78,5 @@ You can also set `LIGHTING_LAB_BASE_URL` instead of passing `--base-url`.
 - The upload script only moves an output directory to `images/uploaded/` after its import job returns `completed`.
 - Only `Specular`, `Depth`, `Alpha`, `Roughness`, `Metallic`, `Normal`, and `BaseColor` pass images are downloaded.
 - Required passes are `Alpha`, `BaseColor`, `Depth`, `Normal`, `Roughness`, and `Specular`; `Metallic` is optional.
-- Pass images are saved under `images/output/<input-name>/<Pass>/<Pass>_<input-name>.<ext>`.
-- The source image is copied as `images/output/<input-name>/Source/Source_<input-name><source-ext>`.
+- Pass images are saved under `images/output/<input-name>/<Pass>/<Pass>_<YYYYMMDD_HHMMSS>.<ext>`.
+- The source image is copied as `images/output/<input-name>/Source/Source_<YYYYMMDD_HHMMSS><source-ext>`.

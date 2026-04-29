@@ -3,10 +3,11 @@ import { createInterface } from 'node:readline/promises';
 import { stdin as input, stdout as output } from 'node:process';
 import path from 'node:path';
 import { openBeebleHome, needsManualLogin, waitForHomeReady, processOneImage } from './beeble-flow.mjs';
-import { getExtensionServiceWorker, launchBrowser, resolveImageAssistantExtension } from './browser.mjs';
+import { getExtensionServiceWorker, ImageAssistantNotInstalledError, launchBrowser, resolveImageAssistantExtension } from './browser.mjs';
 import { buildBaselineSet, downloadCandidates, filterCandidateItems, missingRequiredPasses } from './download.mjs';
 import { ensureRuntimeDirs, listInputImages, moveDirectoryToMissing, moveToRendered, outputDirForImage, projectPaths } from './files.mjs';
 import { closeExtractorPages, extractImagesFromPage } from './imageassistant.mjs';
+import { assertInitialized } from './init-state.mjs';
 
 const args = parseArgs(process.argv.slice(2));
 const paths = projectPaths();
@@ -18,9 +19,26 @@ if (inputs.length === 0) {
   process.exit(0);
 }
 
+try {
+  await assertInitialized(paths);
+} catch (error) {
+  console.error(error.message);
+  process.exit(1);
+}
+
 console.log(`待处理: ${inputs.length} 张`);
-const extension = await resolveImageAssistantExtension(paths);
-console.log(`ImageAssistant: ${extension.extensionPath}${extension.degraded ? ' (trace 降级)' : ''}`);
+let extension;
+try {
+  extension = await resolveImageAssistantExtension(paths);
+} catch (error) {
+  if (error instanceof ImageAssistantNotInstalledError) {
+    console.error(error.message);
+    console.error('请先运行 npm run init 打开安装页，安装插件后再运行下载命令。');
+    process.exit(1);
+  }
+  throw error;
+}
+console.log(`ImageAssistant: ${extension.extensionPath}`);
 
 const context = await launchBrowserOrExit(paths, extension.extensionPath);
 let exitCode = 0;

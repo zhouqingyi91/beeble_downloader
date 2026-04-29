@@ -1,7 +1,7 @@
 import { copyFile, mkdir, readFile, readdir, stat, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { createHash } from 'node:crypto';
-import { assertNonEmptyFile, safeSegment } from './files.mjs';
+import { assertNonEmptyFile } from './files.mjs';
 
 const MIN_AREA = 128 * 128;
 const UI_RE = /(favicon|logo|icon|avatar|spinner|loading|empty|overlay|thumb|placeholder|sprite)/i;
@@ -40,11 +40,12 @@ export function buildBaselineSet(items) {
   return new Set(items.map((item) => normalizeImageUrl(item.src)).filter(Boolean));
 }
 
-export async function downloadCandidates(extractorPage, candidates, outputDir, inputImagePath) {
+export async function downloadCandidates(extractorPage, candidates, outputDir, inputImagePath, options = {}) {
   await mkdir(outputDir, { recursive: true });
+  const nameSegment = options.nameSegment || timestampNameSegment(options.now);
   const sourceHash = await sha256File(inputImagePath);
   const selected = uniqueByPass(candidates);
-  await copySourceImage(inputImagePath, outputDir);
+  await copySourceImage(inputImagePath, outputDir, nameSegment);
 
   const downloaded = [];
   for (const item of selected) {
@@ -54,7 +55,7 @@ export async function downloadCandidates(extractorPage, candidates, outputDir, i
     const hash = sha256Buffer(payload.buffer);
     if (hash === sourceHash) continue;
     const ext = extensionFor(item, payload.contentType);
-    const name = `${passName}_${safeSegment(path.basename(inputImagePath, path.extname(inputImagePath)))}${ext}`;
+    const name = `${passName}_${nameSegment}${ext}`;
     const passDir = path.join(outputDir, passName);
     await mkdir(passDir, { recursive: true });
     const filePath = path.join(passDir, name);
@@ -65,15 +66,27 @@ export async function downloadCandidates(extractorPage, candidates, outputDir, i
   return downloaded;
 }
 
-export async function copySourceImage(inputImagePath, outputDir) {
+export async function copySourceImage(inputImagePath, outputDir, nameSegment = timestampNameSegment()) {
   const sourceDir = path.join(outputDir, 'Source');
   await mkdir(sourceDir, { recursive: true });
   const sourceExt = path.extname(inputImagePath);
-  const sourceName = safeSegment(path.basename(inputImagePath, sourceExt));
-  const target = path.join(sourceDir, `Source_${sourceName}${sourceExt}`);
+  const target = path.join(sourceDir, `Source_${nameSegment}${sourceExt}`);
   await copyFile(inputImagePath, target);
   await assertNonEmptyFile(target);
   return target;
+}
+
+export function timestampNameSegment(date = new Date()) {
+  const pad = (value) => String(value).padStart(2, '0');
+  return [
+    date.getFullYear(),
+    pad(date.getMonth() + 1),
+    pad(date.getDate()),
+    '_',
+    pad(date.getHours()),
+    pad(date.getMinutes()),
+    pad(date.getSeconds())
+  ].join('');
 }
 
 export async function missingRequiredPasses(outputDir) {

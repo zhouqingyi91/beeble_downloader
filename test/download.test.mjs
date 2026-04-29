@@ -1,9 +1,17 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtemp, mkdir, writeFile } from 'node:fs/promises';
+import { mkdtemp, mkdir, readFile, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
-import { buildBaselineSet, filterCandidateItems, missingRequiredPasses, normalizeImageUrl, passNameForItem } from '../src/download.mjs';
+import {
+  buildBaselineSet,
+  downloadCandidates,
+  filterCandidateItems,
+  missingRequiredPasses,
+  normalizeImageUrl,
+  passNameForItem,
+  timestampNameSegment
+} from '../src/download.mjs';
 
 test('normalizeImageUrl removes hash only for regular urls', () => {
   assert.equal(normalizeImageUrl('https://example.com/a.jpg#x'), 'https://example.com/a.jpg');
@@ -34,6 +42,39 @@ test('passNameForItem detects only supported VFX pass names', () => {
   assert.equal(passNameForItem({ filename: '06-Roughness_000001' }), 'Roughness');
   assert.equal(passNameForItem({ filename: 'BaseColor_000001' }), 'BaseColor');
   assert.equal(passNameForItem({ filename: 'image' }), null);
+});
+
+test('timestampNameSegment formats local date as yyyymmdd_hhmmss', () => {
+  assert.equal(timestampNameSegment(new Date(2026, 3, 29, 13, 45, 59)), '20260429_134559');
+});
+
+test('downloadCandidates names source and pass images with timestamp segment', async () => {
+  const dir = await mkdtemp(path.join(os.tmpdir(), 'beeble-download-'));
+  const inputImagePath = path.join(dir, 'Original Product Name.jpg');
+  await writeFile(inputImagePath, 'source-image');
+
+  const page = {
+    async evaluate() {
+      return {
+        dataUrl: `data:image/png;base64,${Buffer.from('rendered-pass').toString('base64')}`,
+        contentType: 'image/png'
+      };
+    }
+  };
+
+  const downloaded = await downloadCandidates(
+    page,
+    [{ src: 'https://x.test/specular.png', filename: 'Specular_000001', width: 1000, height: 1000 }],
+    dir,
+    inputImagePath,
+    { nameSegment: '20260429_134559' }
+  );
+
+  const sourcePath = path.join(dir, 'Source', 'Source_20260429_134559.jpg');
+  const passPath = path.join(dir, 'Specular', 'Specular_20260429_134559.png');
+  assert.equal(await readFile(sourcePath, 'utf8'), 'source-image');
+  assert.equal(await readFile(passPath, 'utf8'), 'rendered-pass');
+  assert.deepEqual(downloaded.map((item) => item.filePath), [passPath]);
 });
 
 test('missingRequiredPasses passes when all required passes have non-empty images', async () => {

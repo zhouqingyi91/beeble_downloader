@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "install-browsers": "playwright install chromium",
+    "init": "node src/init.mjs",
     "run": "node src/cli.mjs",
     "upload": "node src/upload-output.mjs",
     "test": "node --test"
