@@ -43,6 +43,15 @@ Optional timeout override:
 npm run run -- --limit 1 --login-timeout-ms 120000
 ```
 
+Use the source image's trailing number for downloaded file names:
+
+```bash
+npm run run -- --limit 1 --use-source-number
+```
+
+For `Source_000001.png`, pass images are saved as `Alpha_000001.png`, `Roughness_000001.png`, and so on.
+If the source image name has no trailing number, that image fails and the script continues with the next input.
+
 After the `Generate` button becomes ready, the script waits 10 seconds before extracting images.
 Override it when needed:
 
@@ -80,3 +89,5 @@ You can also set `LIGHTING_LAB_BASE_URL` instead of passing `--base-url`.
 - Required passes are `Alpha`, `BaseColor`, `Depth`, `Normal`, `Roughness`, and `Specular`; `Metallic` is optional.
 - Pass images are saved under `images/output/<input-name>/<Pass>/<Pass>_<YYYYMMDD_HHMMSS>.<ext>`.
 - The source image is copied as `images/output/<input-name>/Source/Source_<YYYYMMDD_HHMMSS><source-ext>`.
+- With `--use-source-number`, pass images use the source image's trailing number: `images/output/<input-name>/<Pass>/<Pass>_<source-number>.<ext>`.
+- With `--use-source-number`, the source image is copied as `images/output/<input-name>/Source/Source_<source-number><source-ext>`.

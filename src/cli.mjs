@@ -4,7 +4,7 @@ import { stdin as input, stdout as output } from 'node:process';
 import path from 'node:path';
 import { openBeebleHome, needsManualLogin, waitForHomeReady, processOneImage } from './beeble-flow.mjs';
 import { getExtensionServiceWorker, ImageAssistantNotInstalledError, launchBrowser, resolveImageAssistantExtension } from './browser.mjs';
-import { buildBaselineSet, downloadCandidates, filterCandidateItems, missingRequiredPasses } from './download.mjs';
+import { buildBaselineSet, downloadCandidates, filterCandidateItems, missingRequiredPasses, sourceNumberNameSegment } from './download.mjs';
 import { ensureRuntimeDirs, listInputImages, moveDirectoryToMissing, moveToRendered, outputDirForImage, projectPaths } from './files.mjs';
 import { closeExtractorPages, extractImagesFromPage } from './imageassistant.mjs';
 import { assertInitialized } from './init-state.mjs';
@@ -74,7 +74,8 @@ try {
       candidates.slice(0, 5).forEach((item, idx) => console.log(`  ${idx + 1}. ${item.width}x${item.height} ${item.src}`));
 
       const outDir = await outputDirForImage(paths.outputDir, imagePath);
-      const downloaded = await downloadCandidates(extracted.extractorPage, candidates, outDir, imagePath);
+      const downloadOptions = args.useSourceNumber ? { nameSegment: sourceNumberNameSegment(imagePath) } : {};
+      const downloaded = await downloadCandidates(extracted.extractorPage, candidates, outDir, imagePath, downloadOptions);
       await extracted.extractorPage.close().catch(() => {});
 
       if (downloaded.length === 0) {
@@ -116,10 +117,18 @@ async function launchBrowserOrExit(paths, extensionPath) {
 }
 
 function parseArgs(argv) {
-  const parsed = { dryRun: false, limit: null, renderTimeoutMs: 300000, loginTimeoutMs: 120000, postGenerateDelayMs: 10000 };
+  const parsed = {
+    dryRun: false,
+    limit: null,
+    renderTimeoutMs: 300000,
+    loginTimeoutMs: 120000,
+    postGenerateDelayMs: 10000,
+    useSourceNumber: false
+  };
   for (let i = 0; i < argv.length; i += 1) {
     const arg = argv[i];
     if (arg === '--dry-run') parsed.dryRun = true;
+    else if (arg === '--use-source-number') parsed.useSourceNumber = true;
     else if (arg === '--limit') parsed.limit = Number(argv[++i]);
     else if (arg.startsWith('--limit=')) parsed.limit = Number(arg.split('=')[1]);
     else if (arg === '--render-timeout-ms') parsed.renderTimeoutMs = Number(argv[++i]);

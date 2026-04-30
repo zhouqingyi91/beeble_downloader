@@ -89,6 +89,15 @@ export function timestampNameSegment(date = new Date()) {
   ].join('');
 }
 
+export function sourceNumberNameSegment(inputImagePath) {
+  const basename = path.basename(inputImagePath, path.extname(inputImagePath));
+  const match = /(\d+)$/.exec(basename);
+  if (!match) {
+    throw new Error(`原图文件名缺少末尾编号: ${path.basename(inputImagePath)}`);
+  }
+  return match[1];
+}
+
 export async function missingRequiredPasses(outputDir) {
   const results = await Promise.all(
     REQUIRED_PASS_NAMES.map(async (passName) => ({

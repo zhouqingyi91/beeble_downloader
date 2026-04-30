@@ -10,6 +10,7 @@ import {
   missingRequiredPasses,
   normalizeImageUrl,
   passNameForItem,
+  sourceNumberNameSegment,
   timestampNameSegment
 } from '../src/download.mjs';
 
@@ -48,6 +49,15 @@ test('timestampNameSegment formats local date as yyyymmdd_hhmmss', () => {
   assert.equal(timestampNameSegment(new Date(2026, 3, 29, 13, 45, 59)), '20260429_134559');
 });
 
+test('sourceNumberNameSegment extracts trailing source number', () => {
+  assert.equal(sourceNumberNameSegment('/tmp/Source_000001.png'), '000001');
+  assert.equal(sourceNumberNameSegment('/tmp/product-v2_000123.jpg'), '000123');
+  assert.throws(
+    () => sourceNumberNameSegment('/tmp/product-v2-final.jpg'),
+    /原图文件名缺少末尾编号: product-v2-final\.jpg/
+  );
+});
+
 test('downloadCandidates names source and pass images with timestamp segment', async () => {
   const dir = await mkdtemp(path.join(os.tmpdir(), 'beeble-download-'));
   const inputImagePath = path.join(dir, 'Original Product Name.jpg');
@@ -72,6 +82,35 @@ test('downloadCandidates names source and pass images with timestamp segment', a
 
   const sourcePath = path.join(dir, 'Source', 'Source_20260429_134559.jpg');
   const passPath = path.join(dir, 'Specular', 'Specular_20260429_134559.png');
+  assert.equal(await readFile(sourcePath, 'utf8'), 'source-image');
+  assert.equal(await readFile(passPath, 'utf8'), 'rendered-pass');
+  assert.deepEqual(downloaded.map((item) => item.filePath), [passPath]);
+});
+
+test('downloadCandidates names source and pass images with source number segment', async () => {
+  const dir = await mkdtemp(path.join(os.tmpdir(), 'beeble-download-'));
+  const inputImagePath = path.join(dir, 'Source_000001.jpg');
+  await writeFile(inputImagePath, 'source-image');
+
+  const page = {
+    async evaluate() {
+      return {
+        dataUrl: `data:image/png;base64,${Buffer.from('rendered-pass').toString('base64')}`,
+        contentType: 'image/png'
+      };
+    }
+  };
+
+  const downloaded = await downloadCandidates(
+    page,
+    [{ src: 'https://x.test/alpha.png', filename: 'Alpha_000001', width: 1000, height: 1000 }],
+    dir,
+    inputImagePath,
+    { nameSegment: sourceNumberNameSegment(inputImagePath) }
+  );
+
+  const sourcePath = path.join(dir, 'Source', 'Source_000001.jpg');
+  const passPath = path.join(dir, 'Alpha', 'Alpha_000001.png');
   assert.equal(await readFile(sourcePath, 'utf8'), 'source-image');
   assert.equal(await readFile(passPath, 'utf8'), 'rendered-pass');
   assert.deepEqual(downloaded.map((item) => item.filePath), [passPath]);
