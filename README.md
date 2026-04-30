@@ -24,6 +24,14 @@ Use npm's `--` separator when passing downloader options:
 npm run run -- --limit 1
 ```
 
+Use Beeble's Generate download flow instead of ImageAssistant extraction:
+
+```bash
+npm run run -- --use-generate-download --limit 1
+```
+
+This clicks `Generate`, downloads `All Passes (PNG)`, confirms `Download Anyway` when needed, and extracts the zip directly under `images/output/` while preserving the zip's directory structure.
+
 On Windows 11, ImageAssistant is auto-detected from:
 
 ```txt
@@ -81,8 +89,10 @@ You can also set `LIGHTING_LAB_BASE_URL` instead of passing `--base-url`.
 
 ## Safety
 
-- The script never clicks `Generate`.
+- The default script never clicks `Generate`; `--use-generate-download` opts into Beeble's Generate download flow.
 - It only moves an input image to `images/rendered/` after at least one non-empty image is downloaded.
+- Generate download mode only moves an input image after the downloaded zip extracts at least one non-empty file.
+- Generate download mode refuses zip entries with absolute paths, drive-letter paths, `..`, or existing output targets.
 - If any required pass is missing, the output directory is moved to `images/missing/`.
 - The upload script only moves an output directory to `images/uploaded/` after its import job returns `completed`.
 - Only `Specular`, `Depth`, `Alpha`, `Roughness`, `Metallic`, `Normal`, and `BaseColor` pass images are downloaded.

@@ -1,22 +1,25 @@
 const HOME_URL = 'https://app.beeble.ai/home';
 const GENERATE_RE = /^Generate$/i;
 
-export async function openBeebleHome(page) {
+export async function openBeebleHome(page, options = {}) {
   await page.goto(HOME_URL, { waitUntil: 'domcontentloaded', timeout: 60000 });
-  await installGenerateGuard(page);
+  await dismissLoginDialog(page);
+  if (options.blockGenerate !== false) await installGenerateGuard(page);
 }
 
 export async function needsManualLogin(page) {
+  await dismissLoginDialog(page);
   if (/accounts\.google\.com|login|signin/i.test(page.url())) return true;
   if (await hasVisibleLoginSurface(page)) return true;
   const vfx = await findTextInteractive(page, /^VFX Pass Generator$/i, 7000);
   return !vfx;
 }
 
-export async function waitForHomeReady(page, timeoutMs = 120000) {
-  await installGenerateGuard(page);
+export async function waitForHomeReady(page, timeoutMs = 120000, options = {}) {
+  if (options.blockGenerate !== false) await installGenerateGuard(page);
   const deadline = Date.now() + timeoutMs;
   while (Date.now() < deadline) {
+    await dismissLoginDialog(page);
     if (!(await hasVisibleLoginSurface(page))) {
       const remaining = Math.max(1000, deadline - Date.now());
       const vfx = await findTextInteractive(page, /^VFX Pass Generator$/i, Math.min(remaining, 3000));
@@ -30,9 +33,11 @@ export async function waitForHomeReady(page, timeoutMs = 120000) {
 export async function processOneImage(page, imagePath, options = {}) {
   const uploadTimeoutMs = options.uploadTimeoutMs ?? 120000;
   const renderTimeoutMs = options.renderTimeoutMs ?? 300000;
+  const homeReadyDelayMs = options.homeReadyDelayMs ?? 5000;
 
-  await installGenerateGuard(page);
-  await clickAllowed(page, /^VFX Pass Generator$/i, 'VFX Pass Generator', 45000);
+  if (options.blockGenerate !== false) await installGenerateGuard(page);
+  await page.waitForTimeout(homeReadyDelayMs);
+  await clickVfxPassGenerator(page, 45000);
   await chooseImageRadio(page);
   await uploadImage(page, imagePath);
   await clickAllowed(page, /^Review VFX Passes$/i, 'Review VFX Passes', uploadTimeoutMs);
@@ -60,6 +65,7 @@ export async function installGenerateGuard(page) {
 }
 
 async function chooseImageRadio(page) {
+  await dismissLoginDialog(page);
   const radio = page.getByRole('radio', { name: /^Image$/i }).first();
   if (await radio.count()) {
     await radio.check({ timeout: 15000 }).catch(async () => radio.click({ timeout: 15000 }));
@@ -75,7 +81,16 @@ async function uploadImage(page, imagePath) {
   await chooser.setFiles(imagePath);
 }
 
-async function waitForGenerateReady(page, timeoutMs) {
+async function clickVfxPassGenerator(page, timeoutMs) {
+  await dismissLoginDialog(page);
+  const locator = await findTextInteractive(page, /^VFX Pass Generator$/i, timeoutMs, true);
+  await locator.evaluate((node) => {
+    const target = node.closest('button,[role="button"],a,[tabindex],div') || node;
+    target.click();
+  });
+}
+
+export async function waitForGenerateReady(page, timeoutMs) {
   const result = await page.waitForFunction(
     (source) => {
       const controls = [...document.querySelectorAll('button,[role="button"],a')];
@@ -84,6 +99,7 @@ async function waitForGenerateReady(page, timeoutMs) {
       const disabled = button.disabled || button.getAttribute('aria-disabled') === 'true';
       const rect = button.getBoundingClientRect();
       const visible = !!(rect.width && rect.height);
+      if (!visible || disabled) return null;
       return { visible, disabled, text: (button.innerText || button.textContent || '').trim() };
     },
     GENERATE_RE.source,
@@ -100,11 +116,19 @@ async function clickAllowed(page, textRe, label, timeoutMs) {
   if (GENERATE_RE.test(label)) {
     throw new Error('refusing to click Generate');
   }
+  await dismissLoginDialog(page);
   const locator = await findTextInteractive(page, textRe, timeoutMs, true);
   await locator.click({ timeout: timeoutMs });
 }
 
-async function findTextInteractive(page, textRe, timeoutMs, required = false) {
+export async function clickTextInteractive(page, textRe, label, timeoutMs) {
+  await dismissLoginDialog(page);
+  const locator = await findTextInteractive(page, textRe, timeoutMs, true);
+  await locator.click({ timeout: timeoutMs });
+  return locator;
+}
+
+export async function findTextInteractive(page, textRe, timeoutMs, required = false) {
   const selectors = [
     page.getByRole('button', { name: textRe }).first(),
     page.getByRole('link', { name: textRe }).first(),
@@ -124,6 +148,50 @@ async function findTextInteractive(page, textRe, timeoutMs, required = false) {
   }
   if (required) throw new Error(`cannot find enabled control: ${textRe}`);
   return null;
+}
+
+export async function dismissLoginDialog(page) {
+  const closed = await page.evaluate(() => {
+    const textOf = (node) => (node.innerText || node.textContent || '').trim();
+    const visible = (node) => {
+      if (!node || !node.getBoundingClientRect) return false;
+      const style = window.getComputedStyle(node);
+      const rect = node.getBoundingClientRect();
+      return style.visibility !== 'hidden' && style.display !== 'none' && rect.width > 0 && rect.height > 0;
+    };
+    const authSurface = (node) => /Continue with Google|Continue with Apple|Email|Password|Login|Sign up/i.test(textOf(node));
+    const candidates = [
+      ...document.querySelectorAll('[role="dialog"],[aria-modal="true"]'),
+      ...document.querySelectorAll('div')
+    ].filter((node) => visible(node) && authSurface(node));
+    const dialogs = candidates
+      .map((node) => ({ node, rect: node.getBoundingClientRect(), area: node.getBoundingClientRect().width * node.getBoundingClientRect().height }))
+      .filter((item) => item.rect.width >= 300 && item.rect.height >= 300)
+      .sort((a, b) => a.area - b.area);
+
+    for (const { node: dialog, rect: dialogRect } of dialogs) {
+      const controls = [...dialog.querySelectorAll('button,[role="button"],a')].filter(visible);
+      const close = controls.find((node) => {
+        const text = textOf(node);
+        const aria = node.getAttribute('aria-label') || '';
+        const title = node.getAttribute('title') || '';
+        return /^(Close|Dismiss|×|X)$/i.test(text) || /^(Close|Dismiss)$/i.test(aria) || /^(Close|Dismiss)$/i.test(title);
+      }) || controls.find((node) => {
+        const rect = node.getBoundingClientRect();
+        return rect.width <= 80
+          && rect.height <= 80
+          && rect.top <= dialogRect.top + 120
+          && rect.left >= dialogRect.right - 140;
+      });
+      if (close) {
+        close.click();
+        return true;
+      }
+    }
+    return false;
+  }).catch(() => false);
+  if (closed) await page.waitForTimeout(500).catch(() => {});
+  return closed;
 }
 
 async function hasVisibleLoginSurface(page) {
