@@ -14,3 +14,9 @@ test('parseArgs enables generate download mode', () => {
   assert.equal(args.useGenerateDownload, true);
   assert.equal(args.limit, 1);
 });
+
+test('parseArgs enables source name naming mode', () => {
+  const args = parseArgs(['--use-source-name']);
+
+  assert.equal(args.useSourceName, true);
+});

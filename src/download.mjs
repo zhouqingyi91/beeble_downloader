@@ -1,7 +1,7 @@
 import { copyFile, mkdir, readFile, readdir, stat, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { createHash } from 'node:crypto';
-import { assertNonEmptyFile } from './files.mjs';
+import { assertNonEmptyFile, baseNameWithoutExt, safeSegment } from './files.mjs';
 
 const MIN_AREA = 128 * 128;
 const UI_RE = /(favicon|logo|icon|avatar|spinner|loading|empty|overlay|thumb|placeholder|sprite)/i;
@@ -96,6 +96,10 @@ export function sourceNumberNameSegment(inputImagePath) {
     throw new Error(`原图文件名缺少末尾编号: ${path.basename(inputImagePath)}`);
   }
   return match[1];
+}
+
+export function sourceNameSegment(inputImagePath) {
+  return safeSegment(baseNameWithoutExt(inputImagePath));
 }
 
 export async function missingRequiredPasses(outputDir) {

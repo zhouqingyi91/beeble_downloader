@@ -8,9 +8,8 @@ export async function extractZipToDirectory(zipPath, outputDir) {
   return await extractZipEntries(zipPath, outputDir, (name) => resolveZipTarget(outputDir, name));
 }
 
-export async function extractZipForSourceImage(zipPath, outputRoot, inputImagePath) {
+export async function extractZipForSourceImage(zipPath, outputRoot, inputImagePath, nameSegment = sourceNumberNameSegment(inputImagePath)) {
   const outputDir = path.join(outputRoot, safeSegment(baseNameWithoutExt(inputImagePath)));
-  const nameSegment = sourceNumberNameSegment(inputImagePath);
   return await extractZipEntries(zipPath, outputDir, (name) => targetForSourceImageZipEntry(outputDir, name, nameSegment));
 }
 

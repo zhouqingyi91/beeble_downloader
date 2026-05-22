@@ -5,7 +5,7 @@ import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 import { openBeebleHome, needsManualLogin, waitForHomeReady, processOneImage } from './beeble-flow.mjs';
 import { getExtensionServiceWorker, ImageAssistantNotInstalledError, launchBrowser, resolveImageAssistantExtension } from './browser.mjs';
-import { buildBaselineSet, downloadCandidates, filterCandidateItems, missingRequiredPasses, sourceNumberNameSegment } from './download.mjs';
+import { buildBaselineSet, downloadCandidates, filterCandidateItems, missingRequiredPasses, sourceNameSegment, sourceNumberNameSegment } from './download.mjs';
 import { ensureRuntimeDirs, listInputImages, moveDirectoryToMissing, moveToRendered, outputDirForImage, projectPaths } from './files.mjs';
 import { generateAndDownloadPasses } from './generate-download.mjs';
 import { closeExtractorPages, extractImagesFromPage } from './imageassistant.mjs';
@@ -58,7 +58,8 @@ async function runGenerateDownload(args, paths, inputs) {
         await ensureLoggedIn(page, args.loginTimeoutMs, { blockGenerate: false });
 
         const result = await generateAndDownloadPasses(page, imagePath, paths, {
-          renderTimeoutMs: args.renderTimeoutMs
+          renderTimeoutMs: args.renderTimeoutMs,
+          ...downloadNameSegmentOption(args, imagePath)
         });
         page = result.page;
         console.log(`下载 zip: ${result.zipName || '(unknown)'}`);
@@ -138,7 +139,7 @@ async function runLegacyExtractor(args, paths, inputs) {
         candidates.slice(0, 5).forEach((item, idx) => console.log(`  ${idx + 1}. ${item.width}x${item.height} ${item.src}`));
 
         const outDir = await outputDirForImage(paths.outputDir, imagePath);
-        const downloadOptions = args.useSourceNumber ? { nameSegment: sourceNumberNameSegment(imagePath) } : {};
+        const downloadOptions = downloadNameSegmentOption(args, imagePath);
         const downloaded = await downloadCandidates(extracted.extractorPage, candidates, outDir, imagePath, downloadOptions);
         await extracted.extractorPage.close().catch(() => {});
 
@@ -189,12 +190,14 @@ export function parseArgs(argv) {
     loginTimeoutMs: 120000,
     postGenerateDelayMs: 10000,
     useGenerateDownload: false,
+    useSourceName: false,
     useSourceNumber: false
   };
   for (let i = 0; i < argv.length; i += 1) {
     const arg = argv[i];
     if (arg === '--dry-run') parsed.dryRun = true;
     else if (arg === '--use-generate-download') parsed.useGenerateDownload = true;
+    else if (arg === '--use-source-name') parsed.useSourceName = true;
     else if (arg === '--use-source-number') parsed.useSourceNumber = true;
     else if (arg === '--limit') parsed.limit = Number(argv[++i]);
     else if (arg.startsWith('--limit=')) parsed.limit = Number(arg.split('=')[1]);
@@ -209,6 +212,12 @@ export function parseArgs(argv) {
     throw new Error('--limit 必须是正整数');
   }
   return parsed;
+}
+
+function downloadNameSegmentOption(args, imagePath) {
+  if (args.useSourceName) return { nameSegment: sourceNameSegment(imagePath) };
+  if (args.useSourceNumber) return { nameSegment: sourceNumberNameSegment(imagePath) };
+  return {};
 }
 
 async function ensureLoggedIn(page, loginTimeoutMs, homeOptions = {}) {

@@ -29,7 +29,7 @@ export async function generateAndDownloadPasses(page, imagePath, paths, options 
 
   try {
     await download.saveAs(zipPath);
-    const extractedFiles = await extractZipForSourceImage(zipPath, paths.outputDir, imagePath);
+    const extractedFiles = await extractZipForSourceImage(zipPath, paths.outputDir, imagePath, options.nameSegment);
     return {
       page: downloadPage,
       zipName: download.suggestedFilename(),

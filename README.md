@@ -60,6 +60,15 @@ npm run run -- --limit 1 --use-source-number
 For `Source_000001.png`, pass images are saved as `Alpha_000001.png`, `Roughness_000001.png`, and so on.
 If the source image name has no trailing number, that image fails and the script continues with the next input.
 
+Use the source image's basename for downloaded file names:
+
+```bash
+npm run run -- --limit 1 --use-source-name
+```
+
+For `木纹地板.png`, pass images are saved as `Source_木纹地板.png`, `Alpha_木纹地板.png`, `Roughness_木纹地板.png`, and so on.
+If `--use-source-name` and `--use-source-number` are both passed, `--use-source-name` wins.
+
 After the `Generate` button becomes ready, the script waits 10 seconds before extracting images.
 Override it when needed:
 

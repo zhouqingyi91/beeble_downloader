@@ -10,6 +10,7 @@ import {
   missingRequiredPasses,
   normalizeImageUrl,
   passNameForItem,
+  sourceNameSegment,
   sourceNumberNameSegment,
   timestampNameSegment
 } from '../src/download.mjs';
@@ -56,6 +57,11 @@ test('sourceNumberNameSegment extracts trailing source number', () => {
     () => sourceNumberNameSegment('/tmp/product-v2-final.jpg'),
     /原图文件名缺少末尾编号: product-v2-final\.jpg/
   );
+});
+
+test('sourceNameSegment uses sanitized source basename', () => {
+  assert.equal(sourceNameSegment('/tmp/Original Product Name.jpg'), 'Original Product Name');
+  assert.equal(sourceNameSegment('/tmp/A:B?C.png'), 'A_B_C');
 });
 
 test('downloadCandidates names source and pass images with timestamp segment', async () => {
@@ -111,6 +117,35 @@ test('downloadCandidates names source and pass images with source number segment
 
   const sourcePath = path.join(dir, 'Source', 'Source_000001.jpg');
   const passPath = path.join(dir, 'Alpha', 'Alpha_000001.png');
+  assert.equal(await readFile(sourcePath, 'utf8'), 'source-image');
+  assert.equal(await readFile(passPath, 'utf8'), 'rendered-pass');
+  assert.deepEqual(downloaded.map((item) => item.filePath), [passPath]);
+});
+
+test('downloadCandidates names source and pass images with source name segment', async () => {
+  const dir = await mkdtemp(path.join(os.tmpdir(), 'beeble-download-'));
+  const inputImagePath = path.join(dir, 'Original Product Name.jpg');
+  await writeFile(inputImagePath, 'source-image');
+
+  const page = {
+    async evaluate() {
+      return {
+        dataUrl: `data:image/png;base64,${Buffer.from('rendered-pass').toString('base64')}`,
+        contentType: 'image/png'
+      };
+    }
+  };
+
+  const downloaded = await downloadCandidates(
+    page,
+    [{ src: 'https://x.test/basecolor.png', filename: 'BaseColor_000001', width: 1000, height: 1000 }],
+    dir,
+    inputImagePath,
+    { nameSegment: sourceNameSegment(inputImagePath) }
+  );
+
+  const sourcePath = path.join(dir, 'Source', 'Source_Original Product Name.jpg');
+  const passPath = path.join(dir, 'BaseColor', 'BaseColor_Original Product Name.png');
   assert.equal(await readFile(sourcePath, 'utf8'), 'source-image');
   assert.equal(await readFile(passPath, 'utf8'), 'rendered-pass');
   assert.deepEqual(downloaded.map((item) => item.filePath), [passPath]);

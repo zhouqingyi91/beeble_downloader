@@ -72,3 +72,21 @@ test('extractZipForSourceImage nests passes under source image name and renames 
   ].sort());
   assert.equal(await readFile(path.join(outputDir, 'Source_000004', 'Alpha', 'Alpha_000004.png'), 'utf8'), 'alpha');
 });
+
+test('extractZipForSourceImage renames passes with source name segment', async () => {
+  const dir = await mkdtemp(path.join(os.tmpdir(), 'beeble-zip-source-name-'));
+  const zipPath = path.join(dir, 'passes.zip');
+  const outputDir = path.join(dir, 'output');
+  await writeFile(zipPath, zipSync({
+    'Alpha/Alpha_000001.png': Buffer.from('alpha'),
+    'Source/Source_000001.png': Buffer.from('source')
+  }));
+
+  const extracted = await extractZipForSourceImage(zipPath, outputDir, '/tmp/Wood Floor.png', 'Wood Floor');
+
+  assert.deepEqual(extracted.sort(), [
+    path.join(outputDir, 'Wood Floor', 'Alpha', 'Alpha_Wood Floor.png'),
+    path.join(outputDir, 'Wood Floor', 'Source', 'Source_Wood Floor.png')
+  ].sort());
+  assert.equal(await readFile(path.join(outputDir, 'Wood Floor', 'Alpha', 'Alpha_Wood Floor.png'), 'utf8'), 'alpha');
+});
