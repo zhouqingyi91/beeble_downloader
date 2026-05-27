@@ -89,6 +89,7 @@ Useful options:
 ```bash
 npm run upload -- --dry-run
 npm run upload -- --limit 1
+npm run upload -- --batch-name "你的批次名"
 npm run upload -- --base-url http://pre-pp.lightmeta.com:3001
 npm run upload -- --poll-interval-ms 3000 --timeout-ms 1800000
 ```
